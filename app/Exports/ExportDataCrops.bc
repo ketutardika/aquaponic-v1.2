@@ -1,0 +1,108 @@
+<?php
+
+namespace App\Exports;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Response;
+use App\Models\Crop;
+use App\Models\CropRecord;
+use App\Models\User;
+use App\Models\FarmSection;
+use App\Models\SensorDevice;
+use App\Models\SensorDatalog;
+use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithMapping;
+use Maatwebsite\Excel\Concerns\FromQuery;
+use Maatwebsite\Excel\Concerns\WithStyles;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+
+class ExportDataCrops implements FromCollection,WithHeadings, ShouldAutoSize, WithMapping,WithStyles
+{
+
+    public $id;
+
+    public function __construct($id)
+    {
+    	$this->id=$id;
+    }
+
+    public function collection()
+       {
+       	$crops = Crop::findOrFail('1');
+       	$datare = CropRecord::all();
+        $datarecords = DB::table('sensor_datalogs')
+        ->select(DB::raw("
+        			sensor_datalogs.device_id, sensor_datalogs.updated_at, sensor_devices.device_name,farm_sections.section_name, crops.crop_name,
+                    AVG(IF(sensor_datalogs.device_id=1, sensor_datalogs.data_reading, NULL)) AS Sub1,
+                    AVG(IF(sensor_datalogs.device_id=1, sensor_datalogs.device_id, NULL)) AS device1,
+                    AVG(IF(sensor_datalogs.device_id=2, sensor_datalogs.data_reading, NULL)) AS Sub2,
+                    AVG(IF(sensor_datalogs.device_id=2, sensor_datalogs.device_id, NULL)) AS device2,
+                    AVG(IF(sensor_datalogs.device_id=3, sensor_datalogs.data_reading, NULL)) AS Sub3,
+                    AVG(IF(sensor_datalogs.device_id=3, sensor_datalogs.device_id, NULL)) AS device3,
+                    AVG(IF(sensor_datalogs.device_id=4, sensor_datalogs.data_reading, NULL)) AS Sub4,
+                    AVG(IF(sensor_datalogs.device_id=4, sensor_datalogs.device_id, NULL)) AS device4,
+                    AVG(IF(sensor_datalogs.device_id=5, sensor_datalogs.data_reading, NULL)) AS Sub5,
+                    AVG(IF(sensor_datalogs.device_id=5, sensor_datalogs.device_id, NULL)) AS device5,
+                    AVG(IF(sensor_datalogs.device_id=6, sensor_datalogs.data_reading, NULL)) AS Sub6,
+                    AVG(IF(sensor_datalogs.device_id=6, sensor_datalogs.device_id, NULL)) AS device6,
+                    AVG(IF(sensor_datalogs.device_id=7, sensor_datalogs.data_reading, NULL)) AS Sub7,
+                    AVG(IF(sensor_datalogs.device_id=7, sensor_datalogs.device_id, NULL)) AS device7,
+                    AVG(IF(sensor_datalogs.device_id=8, sensor_datalogs.data_reading, NULL)) AS Sub8,
+                    AVG(IF(sensor_datalogs.device_id=8, sensor_datalogs.device_id, NULL)) AS device8,
+                    AVG(IF(sensor_datalogs.device_id=9, sensor_datalogs.data_reading, NULL)) AS Sub9,
+                    AVG(IF(sensor_datalogs.device_id=9, sensor_datalogs.device_id, NULL)) AS device9,
+                    AVG(IF(sensor_datalogs.device_id=10, sensor_datalogs.data_reading, NULL)) AS Sub10,
+                    AVG(IF(sensor_datalogs.device_id=10, sensor_datalogs.device_id, NULL)) AS device10"
+        ))
+        ->leftJoin('sensor_devices','sensor_datalogs.device_id', '=','sensor_devices.id')
+        ->leftJoin('farm_sections','sensor_devices.id', 'farm_sections.sensor_devices')
+        ->leftJoin('crops','crops.id', $this->id)
+        ->GROUPBY(DB::raw('date(sensor_datalogs.updated_at),HOUR(sensor_datalogs.updated_at)'))
+        ->ORDERBY('sensor_datalogs.updated_at', 'desc')
+        ->get();
+        return $datarecords;
+    }
+
+    public function headings(): array
+    {
+        return [
+        	'Crop',
+        	'Update at',
+            'Temperature 1',
+            'Humidity 1',
+            'Temperature 2',
+            'Humidity 2',
+            'Turbidity Sensor',
+            'TDS Sensor',
+            'Water Level Sensor',
+            'Water Temperature',
+            'PH Water Sensor',
+            'Water Flow Sensor',
+            ];
+    }
+
+    public function map($datarecords): array
+    {
+        return [
+        	$datarecords->crop_name,
+        	$datarecords->updated_at,
+            number_format($datarecords->Sub1, 2, '.', ','),
+            number_format($datarecords->Sub2, 2, '.', ','),
+            number_format($datarecords->Sub3, 2, '.', ','),
+            number_format($datarecords->Sub4, 2, '.', ','),
+            number_format($datarecords->Sub5, 2, '.', ','),
+            number_format($datarecords->Sub6, 2, '.', ','),
+            number_format($datarecords->Sub7, 2, '.', ','),
+            number_format($datarecords->Sub8, 2, '.', ','),
+            number_format($datarecords->Sub9, 2, '.', ','),
+            number_format($datarecords->Sub10, 2, '.', ','),
+        ];
+    }
+    public function styles(Worksheet $sheet)
+    {
+        $sheet->getStyle('A1:K1')->getFont()->setBold(true);
+    }
+}
